@@ -1346,3 +1346,5143 @@ In the next section, we will learn:
 - Performance Optimization
 - Real Production Architecture
 - Interview Questions
+---
+
+# 5.3 Nginx Architecture
+
+One of the biggest reasons behind Nginx's popularity is its **architecture**.
+
+Unlike traditional web servers,
+
+Nginx does **not** create one process or one thread for every client.
+
+Instead,
+
+it uses an **event-driven, asynchronous architecture** that efficiently handles thousands of simultaneous connections.
+
+This is why Nginx can serve millions of requests while consuming relatively low CPU and memory.
+
+---
+
+# Why Architecture Matters?
+
+Imagine your website receives
+
+```
+100 Users
+```
+
+No problem.
+
+Now imagine
+
+```
+100,000 Users
+```
+
+If the web server creates one thread per user,
+
+memory usage increases dramatically.
+
+Nginx solves this problem using an event-driven architecture.
+
+---
+
+# High-Level Nginx Architecture
+
+```
+Clients
+
+↓
+
+Master Process
+
+↓
+
+Worker Process
+
+↓
+
+Worker Process
+
+↓
+
+Worker Process
+
+↓
+
+Operating System
+
+↓
+
+Network
+```
+
+The Master Process controls workers,
+
+while Worker Processes handle client requests.
+
+---
+
+# Components of Nginx
+
+Nginx consists of several components.
+
+```
+Nginx
+
+│
+
+├── Master Process
+
+├── Worker Processes
+
+├── Event Loop
+
+├── Connection Queue
+
+└── Configuration Files
+```
+
+Each component has a different responsibility.
+
+---
+
+# Master Process
+
+The Master Process is responsible for:
+
+- Reading Configuration
+- Starting Worker Processes
+- Reloading Configuration
+- Graceful Restart
+- Graceful Shutdown
+- Managing Worker Processes
+
+The Master Process **does not** handle client requests directly.
+
+---
+
+# Worker Processes
+
+Worker Processes perform the actual work.
+
+They:
+
+- Accept Client Connections
+- Process HTTP Requests
+- Serve Static Files
+- Forward Requests
+- Send Responses
+
+Almost all web traffic is processed by Worker Processes.
+
+---
+
+# Worker Process Architecture
+
+```
+Master
+
+↓
+
+Worker 1
+
+↓
+
+Worker 2
+
+↓
+
+Worker 3
+
+↓
+
+Worker 4
+```
+
+Each worker can handle thousands of concurrent connections.
+
+---
+
+# Event Loop
+
+Every Worker Process contains an
+
+```
+Event Loop
+```
+
+Instead of creating:
+
+```
+1 Thread
+
+↓
+
+1 User
+```
+
+Nginx keeps listening for events.
+
+Example
+
+```
+Connection
+
+↓
+
+Read Request
+
+↓
+
+Process
+
+↓
+
+Send Response
+
+↓
+
+Next Connection
+```
+
+This approach makes Nginx extremely efficient.
+
+---
+
+# Asynchronous Processing
+
+Traditional servers
+
+```
+Request
+
+↓
+
+Wait
+
+↓
+
+Response
+```
+
+Nginx
+
+```
+Request
+
+↓
+
+Process Other Requests
+
+↓
+
+Response Ready
+
+↓
+
+Send Response
+```
+
+Workers do not remain idle while waiting for slow operations.
+
+---
+
+# Event-Driven Workflow
+
+```
+Browser
+
+↓
+
+TCP Connection
+
+↓
+
+Worker Process
+
+↓
+
+Event Loop
+
+↓
+
+Application
+
+↓
+
+Response
+
+↓
+
+Browser
+```
+
+Thousands of events are processed efficiently.
+
+---
+
+# Worker Connections
+
+Each Worker Process can manage many simultaneous connections.
+
+Example
+
+```
+Worker
+
+↓
+
+1024 Connections
+```
+
+If there are
+
+```
+4 Workers
+```
+
+Total capacity is approximately
+
+```
+4096 Connections
+```
+
+Actual capacity depends on configuration and system resources.
+
+---
+
+# worker_processes Directive
+
+Configuration
+
+```nginx
+worker_processes auto;
+```
+
+Meaning
+
+Nginx automatically chooses an appropriate number of worker processes based on available CPU cores.
+
+This is the recommended setting for most systems.
+
+---
+
+# worker_connections Directive
+
+Example
+
+```nginx
+events {
+
+    worker_connections 1024;
+
+}
+```
+
+This specifies the maximum number of simultaneous connections a worker process can handle.
+
+---
+
+# Nginx Request Lifecycle
+
+```
+Browser
+
+↓
+
+DNS Resolution
+
+↓
+
+TCP Connection
+
+↓
+
+Nginx Worker
+
+↓
+
+Configuration Match
+
+↓
+
+Application
+
+↓
+
+Response
+
+↓
+
+Browser
+```
+
+Every incoming request follows this workflow.
+
+---
+
+# Request Processing Example
+
+Suppose a user opens
+
+```
+https://example.com
+```
+
+Workflow
+
+```
+Browser
+
+↓
+
+HTTP Request
+
+↓
+
+Worker Process
+
+↓
+
+Server Block Match
+
+↓
+
+Location Match
+
+↓
+
+Serve File
+
+or
+
+Proxy Request
+
+↓
+
+Response
+```
+
+---
+
+# Serving Static Files
+
+```
+Browser
+
+↓
+
+Nginx
+
+↓
+
+index.html
+
+↓
+
+Browser
+```
+
+No backend application is required.
+
+This is extremely fast.
+
+---
+
+# Reverse Proxy Workflow
+
+```
+Browser
+
+↓
+
+Nginx
+
+↓
+
+Spring Boot
+
+↓
+
+MySQL
+
+↓
+
+Nginx
+
+↓
+
+Browser
+```
+
+Nginx forwards the request,
+
+waits for the backend response,
+
+then returns it to the client.
+
+---
+
+# Multiple Worker Processes
+
+```
+Master
+
+│
+
+├── Worker 1
+
+├── Worker 2
+
+├── Worker 3
+
+└── Worker 4
+```
+
+If one worker becomes busy,
+
+other workers continue processing requests.
+
+---
+
+# Load Distribution
+
+Incoming connections are distributed among available workers by the operating system.
+
+```
+Users
+
+↓
+
+Operating System
+
+↓
+
+Worker Processes
+```
+
+This improves CPU utilization.
+
+---
+
+# Graceful Reload
+
+One powerful feature of Nginx is configuration reloading without stopping the service.
+
+Workflow
+
+```
+Update nginx.conf
+
+↓
+
+Reload
+
+↓
+
+New Workers Started
+
+↓
+
+Old Workers Finish Requests
+
+↓
+
+Old Workers Exit
+```
+
+Users experience little or no interruption.
+
+---
+
+# Memory Usage
+
+Traditional Server
+
+```
+1000 Users
+
+↓
+
+1000 Threads
+
+↓
+
+High Memory Usage
+```
+
+Nginx
+
+```
+1000 Users
+
+↓
+
+Few Workers
+
+↓
+
+Event Loop
+
+↓
+
+Lower Memory Usage
+```
+
+This is one of Nginx's biggest advantages.
+
+---
+
+# CPU Utilization
+
+Nginx efficiently uses multiple CPU cores.
+
+```
+CPU Core 1
+
+↓
+
+Worker
+
+--------------------
+
+CPU Core 2
+
+↓
+
+Worker
+
+--------------------
+
+CPU Core 3
+
+↓
+
+Worker
+
+--------------------
+
+CPU Core 4
+
+↓
+
+Worker
+```
+
+This allows excellent scalability on multi-core systems.
+
+---
+
+# Real Production Architecture
+
+```
+Internet
+
+↓
+
+Load Balancer
+
+↓
+
+Nginx
+
+↓
+
+Application Cluster
+
+↓
+
+Redis
+
+↓
+
+MySQL
+```
+
+Nginx sits between users and backend services.
+
+---
+
+# Architecture Advantages
+
+✔ Event-Driven
+
+✔ Asynchronous
+
+✔ Low Memory Usage
+
+✔ High Performance
+
+✔ Excellent Scalability
+
+✔ High Concurrency
+
+✔ Fast Static File Serving
+
+✔ Efficient Reverse Proxy
+
+---
+
+# Traditional Server vs Nginx
+
+| Feature | Traditional Server | Nginx |
+|----------|-------------------|--------|
+| Architecture | Process/Thread Based | Event Driven |
+| Memory Usage | High | Low |
+| Concurrent Users | Limited | Very High |
+| Scalability | Moderate | Excellent |
+| Static Content | Good | Excellent |
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Thinking the Master Process serves client requests.
+
+Only Worker Processes handle requests.
+
+---
+
+### Mistake 2
+
+Setting too many worker processes manually.
+
+In most cases,
+
+```
+worker_processes auto;
+```
+
+is recommended.
+
+---
+
+### Mistake 3
+
+Confusing Worker Processes with Threads.
+
+Nginx Workers use an event-driven model rather than creating one thread per client connection.
+
+---
+
+### Mistake 4
+
+Believing one Worker handles only one request.
+
+Each Worker can process many concurrent connections.
+
+---
+
+# Interview Questions
+
+### Q1. Why is Nginx faster than many traditional web servers?
+
+Because it uses an event-driven, asynchronous architecture that efficiently handles many concurrent connections.
+
+---
+
+### Q2. What is the role of the Master Process?
+
+It manages configuration, starts worker processes and controls the Nginx lifecycle.
+
+---
+
+### Q3. Which process handles client requests?
+
+Worker Processes.
+
+---
+
+### Q4. What does `worker_processes auto;` do?
+
+It automatically selects an appropriate number of worker processes based on the available CPU cores.
+
+---
+
+### Q5. What is the purpose of `worker_connections`?
+
+It specifies the maximum number of simultaneous connections each worker process can handle.
+
+---
+
+# Production Best Practices
+
+✔ Use `worker_processes auto;`
+
+✔ Configure appropriate `worker_connections`.
+
+✔ Reload configuration instead of restarting whenever possible.
+
+✔ Monitor CPU and memory usage.
+
+✔ Test configuration using:
+
+```bash
+nginx -t
+```
+
+before reloading.
+
+✔ Keep Nginx updated to receive performance improvements and security fixes.
+
+---
+
+# Key Takeaways
+
+- Nginx uses an event-driven, asynchronous architecture.
+- The Master Process manages Worker Processes.
+- Worker Processes handle all client requests.
+- Event-driven processing enables high concurrency with low memory usage.
+- Nginx architecture is one of the primary reasons for its widespread use in high-traffic production environments.
+
+---
+
+# Next Section
+
+## 5.4 Installing Nginx
+
+In the next section, we will learn:
+
+- Installing Nginx on Ubuntu
+- Installing Nginx on Rocky Linux
+- Installing Nginx on Amazon Linux
+- Verifying Installation
+- Starting Nginx
+- Enabling Nginx at Boot
+- Checking Service Status
+- Production Installation Best Practices
+- Interview Questions
+---
+
+# 5.4 Installing Nginx
+
+Now that we understand how Nginx works,
+
+it's time to install it.
+
+One of the reasons Nginx is so popular is that installation is simple on almost every Linux distribution.
+
+In this section,
+
+we will install Nginx on:
+
+- Ubuntu
+- Rocky Linux
+- Amazon Linux
+
+We will also learn how to:
+
+- Start Nginx
+- Stop Nginx
+- Restart Nginx
+- Reload Configuration
+- Enable Auto Start
+- Verify Installation
+
+---
+
+# Lab Environment
+
+For this chapter we will use:
+
+```
+Ubuntu 24.04 LTS
+
+or
+
+Rocky Linux 9
+
+or
+
+Amazon Linux 2023
+```
+
+You may also perform these steps on an AWS EC2 instance.
+
+---
+
+# Before Installing
+
+Always update package information.
+
+Ubuntu
+
+```bash
+sudo apt update
+```
+
+Rocky Linux
+
+```bash
+sudo dnf check-update
+```
+
+Amazon Linux
+
+```bash
+sudo dnf check-update
+```
+
+Keeping package repositories updated ensures that you install the latest available version.
+
+---
+
+# Installing Nginx on Ubuntu
+
+Install Nginx
+
+```bash
+sudo apt update
+
+sudo apt install nginx -y
+```
+
+Installation usually completes within a few seconds.
+
+---
+
+# Verify Installation
+
+Check the installed version.
+
+```bash
+nginx -v
+```
+
+Example
+
+```text
+nginx version: nginx/1.24.x
+```
+
+For detailed build information
+
+```bash
+nginx -V
+```
+
+---
+
+# Installing Nginx on Rocky Linux
+
+Install the package.
+
+```bash
+sudo dnf install nginx -y
+```
+
+Verify
+
+```bash
+nginx -v
+```
+
+---
+
+# Installing Nginx on Amazon Linux
+
+Install Nginx
+
+```bash
+sudo dnf install nginx -y
+```
+
+Verify
+
+```bash
+nginx -v
+```
+
+---
+
+# Start Nginx
+
+Use systemd.
+
+```bash
+sudo systemctl start nginx
+```
+
+The web server starts immediately.
+
+---
+
+# Check Status
+
+```bash
+sudo systemctl status nginx
+```
+
+Example
+
+```text
+Active: active (running)
+```
+
+If you see:
+
+```
+active (running)
+```
+
+Nginx is working correctly.
+
+---
+
+# Enable Nginx at Boot
+
+Enable automatic startup after reboot.
+
+```bash
+sudo systemctl enable nginx
+```
+
+Example Output
+
+```text
+Created symlink...
+```
+
+Now Nginx starts automatically whenever the server boots.
+
+---
+
+# Disable Auto Start
+
+If required,
+
+disable automatic startup.
+
+```bash
+sudo systemctl disable nginx
+```
+
+---
+
+# Stop Nginx
+
+```bash
+sudo systemctl stop nginx
+```
+
+The web server stops accepting requests.
+
+---
+
+# Restart Nginx
+
+Restart the service.
+
+```bash
+sudo systemctl restart nginx
+```
+
+Use restart after major configuration changes.
+
+---
+
+# Reload Nginx
+
+Reload configuration without disconnecting active users.
+
+```bash
+sudo systemctl reload nginx
+```
+
+Reload is preferred over restart whenever only configuration files have changed.
+
+---
+
+# Test Configuration
+
+Before reloading,
+
+always validate the configuration.
+
+```bash
+sudo nginx -t
+```
+
+Example
+
+```text
+syntax is ok
+
+test is successful
+```
+
+Never reload a production server without testing the configuration.
+
+---
+
+# Verify Using Browser
+
+Open your browser.
+
+```
+http://SERVER_IP
+```
+
+Example
+
+```
+http://192.168.1.20
+```
+
+or on AWS
+
+```
+http://PUBLIC-IP
+```
+
+If installation is successful,
+
+you should see the default Nginx welcome page.
+
+---
+
+# Verify Using curl
+
+You can also test from the terminal.
+
+```bash
+curl http://localhost
+```
+
+or
+
+```bash
+curl http://SERVER-IP
+```
+
+A successful response confirms that Nginx is serving requests.
+
+---
+
+# Firewall Configuration (Ubuntu)
+
+If UFW is enabled,
+
+allow HTTP traffic.
+
+```bash
+sudo ufw allow 'Nginx Full'
+```
+
+Verify
+
+```bash
+sudo ufw status
+```
+
+---
+
+# Firewall Configuration (Rocky Linux)
+
+Allow HTTP and HTTPS.
+
+```bash
+sudo firewall-cmd --permanent --add-service=http
+
+sudo firewall-cmd --permanent --add-service=https
+
+sudo firewall-cmd --reload
+```
+
+---
+
+# AWS EC2 Configuration
+
+If Nginx is running on an EC2 instance,
+
+also configure the Security Group.
+
+Allow:
+
+| Port | Protocol |
+|------|----------|
+| 80 | HTTP |
+| 443 | HTTPS |
+
+Without these rules,
+
+the browser cannot access the server.
+
+---
+
+# Installation Workflow
+
+```
+Install Package
+
+↓
+
+Start Service
+
+↓
+
+Enable at Boot
+
+↓
+
+Test Configuration
+
+↓
+
+Open Browser
+
+↓
+
+Verify Welcome Page
+```
+
+---
+
+# Useful Systemctl Commands
+
+| Command | Purpose |
+|----------|----------|
+| `systemctl start nginx` | Start Service |
+| `systemctl stop nginx` | Stop Service |
+| `systemctl restart nginx` | Restart Service |
+| `systemctl reload nginx` | Reload Configuration |
+| `systemctl status nginx` | View Status |
+| `systemctl enable nginx` | Auto Start |
+| `systemctl disable nginx` | Disable Auto Start |
+
+---
+
+# Verify Listening Port
+
+Check whether Nginx is listening on Port 80.
+
+```bash
+ss -tulpn | grep nginx
+```
+
+Example
+
+```text
+LISTEN
+
+0.0.0.0:80
+```
+
+---
+
+# Check Running Process
+
+```bash
+ps -ef | grep nginx
+```
+
+Example
+
+```text
+master process
+
+worker process
+
+worker process
+```
+
+This confirms that both the Master Process and Worker Processes are running.
+
+---
+
+# Real Production Installation
+
+```
+Ubuntu Server
+
+↓
+
+Install Nginx
+
+↓
+
+Enable Firewall
+
+↓
+
+Open Port 80
+
+↓
+
+Open Port 443
+
+↓
+
+Start Service
+
+↓
+
+Deploy Website
+```
+
+This is the typical workflow followed by DevOps Engineers.
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Forgetting to start the service after installation.
+
+Installing the package does not always mean the service is running.
+
+---
+
+### Mistake 2
+
+Opening the browser before allowing firewall or Security Group access.
+
+Ensure Port 80 and Port 443 are accessible.
+
+---
+
+### Mistake 3
+
+Restarting without testing the configuration.
+
+Always run:
+
+```bash
+nginx -t
+```
+
+first.
+
+---
+
+### Mistake 4
+
+Using restart instead of reload for minor configuration changes.
+
+Reload updates the configuration with minimal disruption.
+
+---
+
+### Mistake 5
+
+Ignoring service status.
+
+Always verify using:
+
+```bash
+systemctl status nginx
+```
+
+---
+
+# Interview Questions
+
+### Q1. Which command installs Nginx on Ubuntu?
+
+```bash
+sudo apt install nginx -y
+```
+
+---
+
+### Q2. How do you start Nginx?
+
+```bash
+sudo systemctl start nginx
+```
+
+---
+
+### Q3. Which command checks the Nginx version?
+
+```bash
+nginx -v
+```
+
+---
+
+### Q4. Which command validates the configuration?
+
+```bash
+sudo nginx -t
+```
+
+---
+
+### Q5. What is the difference between restart and reload?
+
+**Restart** stops and starts the Nginx service.
+
+**Reload** applies configuration changes without fully stopping the service, allowing existing connections to continue where possible.
+
+---
+
+# Production Best Practices
+
+✔ Install Nginx from trusted repositories.
+
+✔ Always verify installation.
+
+✔ Enable the service at boot.
+
+✔ Test the configuration before reloading.
+
+✔ Open only required firewall ports.
+
+✔ Restrict unnecessary access.
+
+✔ Keep Nginx updated with security patches.
+
+✔ Monitor the service after deployment.
+
+---
+
+# Key Takeaways
+
+- Nginx installation is straightforward on major Linux distributions.
+- Use `systemctl` to manage the service.
+- Always validate the configuration using `nginx -t`.
+- Ensure firewall rules and AWS Security Groups allow HTTP/HTTPS traffic.
+- Reload configuration whenever possible to minimize downtime.
+
+---
+
+# Next Section
+
+## 5.5 Nginx Directory Structure
+
+In the next section, we will learn:
+
+- Nginx Installation Files
+- Configuration Directory
+- HTML Directory
+- Log Directory
+- Module Directory
+- sites-available
+- sites-enabled
+- Production Directory Layout
+- Best Practices
+- Interview Questions
+---
+
+# 5.5 Nginx Directory Structure
+
+After installing Nginx,
+
+the next step is understanding **where everything is stored**.
+
+A DevOps Engineer should know:
+
+- Where configuration files are located
+- Where website files are stored
+- Where logs are saved
+- Where SSL certificates are placed
+- Where modules are installed
+
+Understanding the directory structure makes administration and troubleshooting much easier.
+
+---
+
+# Why Learn the Directory Structure?
+
+Suppose you want to:
+
+- Host a Website
+- Change Configuration
+- Enable HTTPS
+- View Logs
+- Troubleshoot Errors
+
+You must know where the required files are located.
+
+Without understanding the directory layout,
+
+managing Nginx becomes difficult.
+
+---
+
+# Default Nginx Directory Structure
+
+On Ubuntu,
+
+the common directory structure looks like:
+
+```text
+/etc/nginx/
+
+├── nginx.conf
+├── conf.d/
+├── sites-available/
+├── sites-enabled/
+├── snippets/
+├── modules-enabled/
+
+----------------------------
+
+/var/www/html/
+
+/var/log/nginx/
+
+/usr/sbin/nginx
+
+/lib/systemd/system/nginx.service
+```
+
+---
+
+# Main Directories
+
+| Directory | Purpose |
+|------------|----------|
+| `/etc/nginx/` | Configuration Files |
+| `/var/www/html/` | Website Files |
+| `/var/log/nginx/` | Log Files |
+| `/usr/sbin/nginx` | Nginx Binary |
+| `/run/nginx.pid` | Process ID |
+| `/etc/nginx/conf.d/` | Additional Configuration |
+| `/etc/nginx/sites-available/` | Website Configurations |
+| `/etc/nginx/sites-enabled/` | Enabled Websites |
+
+---
+
+# Main Configuration Directory
+
+```
+/etc/nginx/
+```
+
+This is the most important directory.
+
+It contains:
+
+- nginx.conf
+- Virtual Hosts
+- Modules
+- SSL Configuration
+- Include Files
+
+Almost every configuration change begins here.
+
+---
+
+# nginx.conf
+
+```
+/etc/nginx/nginx.conf
+```
+
+This is the primary configuration file.
+
+It controls:
+
+- Worker Processes
+- Logging
+- HTTP Settings
+- Compression
+- Includes
+- Security
+- Performance
+
+Every Nginx installation contains this file.
+
+---
+
+# Example
+
+```bash
+cat /etc/nginx/nginx.conf
+```
+
+or
+
+```bash
+sudo nano /etc/nginx/nginx.conf
+```
+
+Always validate the configuration after making changes.
+
+---
+
+# sites-available
+
+```
+/etc/nginx/sites-available/
+```
+
+This directory stores configuration files for websites.
+
+Example
+
+```
+example.com
+
+company.com
+
+api.company.com
+```
+
+A configuration stored here is **not active** until it is enabled.
+
+---
+
+# sites-enabled
+
+```
+/etc/nginx/sites-enabled/
+```
+
+This directory contains symbolic links to enabled website configurations.
+
+Workflow
+
+```
+sites-available
+
+↓
+
+Create Symlink
+
+↓
+
+sites-enabled
+
+↓
+
+Website Active
+```
+
+Only configurations linked here are loaded by Nginx.
+
+---
+
+# conf.d
+
+```
+/etc/nginx/conf.d/
+```
+
+This directory stores additional configuration files.
+
+Example
+
+```
+proxy.conf
+
+security.conf
+
+gzip.conf
+
+cache.conf
+```
+
+These files are usually included automatically by `nginx.conf`.
+
+---
+
+# snippets
+
+```
+/etc/nginx/snippets/
+```
+
+Reusable configuration snippets are stored here.
+
+Example
+
+```
+ssl.conf
+
+security.conf
+
+headers.conf
+```
+
+Instead of repeating the same configuration,
+
+it can be included in multiple virtual hosts.
+
+---
+
+# modules-enabled
+
+```
+/etc/nginx/modules-enabled/
+```
+
+This directory contains enabled dynamic modules.
+
+Examples
+
+- GeoIP
+- Image Filter
+- Stream Module
+
+Not every installation contains additional modules.
+
+---
+
+# Website Root Directory
+
+By default,
+
+Ubuntu stores website files here:
+
+```
+/var/www/html/
+```
+
+Example
+
+```
+index.html
+
+style.css
+
+logo.png
+
+about.html
+```
+
+When someone opens your website,
+
+Nginx serves files from this directory unless configured otherwise.
+
+---
+
+# Example
+
+```bash
+cd /var/www/html
+
+ls
+```
+
+Output
+
+```
+index.html
+```
+
+---
+
+# Hosting Multiple Websites
+
+Production servers usually create separate directories.
+
+Example
+
+```
+/var/www/
+
+├── company.com/
+
+├── api.company.com/
+
+├── admin.company.com/
+
+└── blog.company.com/
+```
+
+Each website has its own document root.
+
+---
+
+# Log Directory
+
+```
+/var/log/nginx/
+```
+
+This directory stores logs.
+
+Important files:
+
+```
+access.log
+
+error.log
+```
+
+Logs are essential for troubleshooting.
+
+---
+
+# access.log
+
+```
+/var/log/nginx/access.log
+```
+
+Every successful client request is recorded.
+
+Example
+
+```
+IP Address
+
+↓
+
+Request
+
+↓
+
+Status Code
+
+↓
+
+Timestamp
+```
+
+---
+
+# error.log
+
+```
+/var/log/nginx/error.log
+```
+
+Errors are stored here.
+
+Examples
+
+- Permission Denied
+- File Not Found
+- Upstream Timeout
+- SSL Errors
+- Configuration Errors
+
+Whenever something goes wrong,
+
+check `error.log` first.
+
+---
+
+# Viewing Logs
+
+Live Access Log
+
+```bash
+sudo tail -f /var/log/nginx/access.log
+```
+
+Live Error Log
+
+```bash
+sudo tail -f /var/log/nginx/error.log
+```
+
+This is one of the most frequently used troubleshooting commands.
+
+---
+
+# Nginx Binary
+
+```
+/usr/sbin/nginx
+```
+
+This is the Nginx executable.
+
+Verify
+
+```bash
+which nginx
+```
+
+Example
+
+```
+/usr/sbin/nginx
+```
+
+---
+
+# Process ID File
+
+```
+/run/nginx.pid
+```
+
+This file stores the Process ID (PID) of the Master Process.
+
+Example
+
+```bash
+cat /run/nginx.pid
+```
+
+---
+
+# Systemd Service File
+
+```
+/lib/systemd/system/nginx.service
+```
+
+This file defines how systemd manages the Nginx service.
+
+Commands
+
+```bash
+systemctl start nginx
+
+systemctl stop nginx
+
+systemctl restart nginx
+```
+
+use this service definition.
+
+---
+
+# SSL Certificate Directory
+
+A common location for SSL certificates is:
+
+```
+/etc/ssl/
+
+or
+
+/etc/letsencrypt/
+```
+
+Certificates and private keys are stored here depending on how HTTPS is configured.
+
+---
+
+# Production Directory Structure
+
+```
+/etc/nginx
+
+↓
+
+Configuration
+
+------------------------
+
+/var/www
+
+↓
+
+Website Files
+
+------------------------
+
+/var/log/nginx
+
+↓
+
+Logs
+
+------------------------
+
+/etc/ssl
+
+↓
+
+Certificates
+```
+
+This organization simplifies administration.
+
+---
+
+# Real Production Example
+
+Suppose a company hosts three websites.
+
+```
+/var/www
+
+├── company.com
+
+├── api.company.com
+
+└── portal.company.com
+```
+
+Configuration
+
+```
+/etc/nginx/sites-available/
+
+↓
+
+company.conf
+
+api.conf
+
+portal.conf
+```
+
+Enabled
+
+```
+sites-enabled
+
+↓
+
+Symlinks
+
+↓
+
+Nginx Reload
+```
+
+All three websites become available.
+
+---
+
+# Directory Workflow
+
+```
+Website Files
+
+↓
+
+/var/www
+
+↓
+
+Configuration
+
+↓
+
+/etc/nginx
+
+↓
+
+Logs
+
+↓
+
+/var/log/nginx
+
+↓
+
+Browser
+```
+
+Every request passes through this workflow.
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Editing files directly inside `sites-enabled`.
+
+Edit the original configuration in `sites-available` and maintain the symbolic link.
+
+---
+
+### Mistake 2
+
+Ignoring `error.log`.
+
+Most Nginx issues can be diagnosed using the error log.
+
+---
+
+### Mistake 3
+
+Placing website files in the wrong directory.
+
+Verify the configured `root` directive before copying files.
+
+---
+
+### Mistake 4
+
+Forgetting to reload Nginx after configuration changes.
+
+Always validate and reload:
+
+```bash
+sudo nginx -t
+
+sudo systemctl reload nginx
+```
+
+---
+
+# Interview Questions
+
+### Q1. Where is the main Nginx configuration file located?
+
+```
+/etc/nginx/nginx.conf
+```
+
+---
+
+### Q2. Where are website files stored by default on Ubuntu?
+
+```
+/var/www/html/
+```
+
+---
+
+### Q3. Which log records client requests?
+
+```
+access.log
+```
+
+---
+
+### Q4. Which log should you check first when troubleshooting?
+
+```
+error.log
+```
+
+---
+
+### Q5. What is the purpose of `sites-enabled`?
+
+It contains symbolic links to website configurations that Nginx loads when it starts or reloads.
+
+---
+
+# Production Best Practices
+
+✔ Keep each website in its own document root.
+
+✔ Use `sites-available` and `sites-enabled` for virtual hosts.
+
+✔ Monitor `access.log` and `error.log` regularly.
+
+✔ Store SSL certificates securely.
+
+✔ Validate configuration before reloading.
+
+✔ Use meaningful file names for virtual host configurations.
+
+✔ Back up configuration files before major changes.
+
+---
+
+# Key Takeaways
+
+- Nginx stores configuration files in `/etc/nginx`.
+- Website files are commonly stored in `/var/www`.
+- Logs are stored in `/var/log/nginx`.
+- `sites-available` stores website configurations.
+- `sites-enabled` activates those configurations.
+- Understanding the directory structure is essential for managing and troubleshooting Nginx.
+
+---
+
+# Next Section
+
+## 5.6 Understanding nginx.conf
+
+In the next section, we will learn:
+
+- Structure of `nginx.conf`
+- Global Directives
+- Events Block
+- HTTP Block
+- Include Statements
+- Worker Configuration
+- Logging Configuration
+- Performance Settings
+- Production Best Practices
+- Interview Questions
+---
+
+# 5.6 Understanding nginx.conf
+
+The heart of every Nginx installation is the **nginx.conf** file.
+
+Whenever Nginx starts,
+
+it first reads this file.
+
+Every major configuration—
+
+- Worker Processes
+- Logging
+- Compression
+- Virtual Hosts
+- Reverse Proxy
+- SSL
+- Performance
+
+is controlled directly or indirectly through **nginx.conf**.
+
+For every DevOps Engineer,
+
+understanding this file is essential.
+
+---
+
+# Location of nginx.conf
+
+On Ubuntu
+
+```text
+/etc/nginx/nginx.conf
+```
+
+On Rocky Linux
+
+```text
+/etc/nginx/nginx.conf
+```
+
+On Amazon Linux
+
+```text
+/etc/nginx/nginx.conf
+```
+
+Almost every Linux distribution stores it in the same location.
+
+---
+
+# Opening nginx.conf
+
+View the configuration
+
+```bash
+cat /etc/nginx/nginx.conf
+```
+
+Edit
+
+```bash
+sudo nano /etc/nginx/nginx.conf
+```
+
+or
+
+```bash
+sudo vim /etc/nginx/nginx.conf
+```
+
+---
+
+# Basic Structure
+
+A default nginx.conf looks similar to:
+
+```nginx
+user www-data;
+
+worker_processes auto;
+
+pid /run/nginx.pid;
+
+events {
+
+    worker_connections 1024;
+
+}
+
+http {
+
+    include mime.types;
+
+    include /etc/nginx/conf.d/*.conf;
+
+    include /etc/nginx/sites-enabled/*;
+
+}
+```
+
+Every directive has a specific purpose.
+
+---
+
+# High-Level Structure
+
+```
+nginx.conf
+
+│
+
+├── Global Directives
+
+├── Events Block
+
+├── HTTP Block
+
+└── Includes
+```
+
+---
+
+# Global Directives
+
+The top section defines global settings.
+
+Example
+
+```nginx
+user www-data;
+
+worker_processes auto;
+
+pid /run/nginx.pid;
+```
+
+These settings apply to the entire Nginx server.
+
+---
+
+# user Directive
+
+Example
+
+```nginx
+user www-data;
+```
+
+This specifies the Linux user under which Worker Processes run.
+
+Ubuntu
+
+```
+www-data
+```
+
+Rocky Linux
+
+```
+nginx
+```
+
+Running as a non-root user improves security.
+
+---
+
+# worker_processes
+
+Example
+
+```nginx
+worker_processes auto;
+```
+
+This automatically selects the optimal number of Worker Processes based on CPU cores.
+
+Example
+
+```
+4 CPU Cores
+
+↓
+
+4 Workers
+```
+
+---
+
+# pid Directive
+
+Example
+
+```nginx
+pid /run/nginx.pid;
+```
+
+This stores the Master Process ID.
+
+Useful during:
+
+- Restart
+- Reload
+- Monitoring
+
+---
+
+# Events Block
+
+Example
+
+```nginx
+events {
+
+    worker_connections 1024;
+
+}
+```
+
+The Events Block controls connection handling.
+
+---
+
+# worker_connections
+
+Example
+
+```nginx
+worker_connections 1024;
+```
+
+Meaning
+
+Each Worker Process can handle
+
+```
+1024
+
+connections
+```
+
+Total capacity
+
+```
+Workers
+
+×
+
+Worker Connections
+```
+
+---
+
+# Example
+
+Suppose
+
+```
+worker_processes
+
+↓
+
+4
+
+-------------------
+
+worker_connections
+
+↓
+
+1024
+```
+
+Approximate connection capacity
+
+```
+4096
+
+Connections
+```
+
+---
+
+# HTTP Block
+
+The HTTP Block is the largest section.
+
+Example
+
+```nginx
+http {
+
+}
+```
+
+Everything related to web traffic is configured here.
+
+---
+
+# HTTP Block Responsibilities
+
+The HTTP block controls
+
+- Websites
+- Reverse Proxy
+- MIME Types
+- Compression
+- Logging
+- Caching
+- SSL
+- Virtual Hosts
+
+Almost every web-related configuration belongs here.
+
+---
+
+# Include Directive
+
+Example
+
+```nginx
+include /etc/nginx/sites-enabled/*;
+```
+
+Instead of writing every configuration inside nginx.conf,
+
+Nginx loads external configuration files.
+
+Benefits
+
+✔ Cleaner Configuration
+
+✔ Easier Management
+
+✔ Multiple Websites
+
+---
+
+# MIME Types
+
+Example
+
+```nginx
+include mime.types;
+```
+
+MIME Types tell browsers how to interpret files.
+
+Example
+
+```
+HTML
+
+↓
+
+text/html
+
+---------------------
+
+CSS
+
+↓
+
+text/css
+
+---------------------
+
+PNG
+
+↓
+
+image/png
+```
+
+Without correct MIME types,
+
+browsers may not display files properly.
+
+---
+
+# Default Type
+
+Example
+
+```nginx
+default_type application/octet-stream;
+```
+
+Unknown file types are treated as binary files.
+
+---
+
+# Logging Configuration
+
+Example
+
+```nginx
+access_log /var/log/nginx/access.log;
+
+error_log /var/log/nginx/error.log;
+```
+
+Access Log
+
+↓
+
+Successful Requests
+
+Error Log
+
+↓
+
+Problems
+
+---
+
+# sendfile
+
+Example
+
+```nginx
+sendfile on;
+```
+
+Allows Nginx to efficiently send files to clients.
+
+Advantages
+
+✔ Better Performance
+
+✔ Lower CPU Usage
+
+---
+
+# tcp_nopush
+
+Example
+
+```nginx
+tcp_nopush on;
+```
+
+Optimizes packet transmission,
+
+especially when serving large files.
+
+---
+
+# tcp_nodelay
+
+Example
+
+```nginx
+tcp_nodelay on;
+```
+
+Reduces response latency for small packets.
+
+Useful for interactive applications.
+
+---
+
+# keepalive_timeout
+
+Example
+
+```nginx
+keepalive_timeout 65;
+```
+
+Controls how long an idle client connection remains open.
+
+Longer time
+
+↓
+
+Fewer reconnects
+
+Shorter time
+
+↓
+
+Lower resource usage
+
+---
+
+# types_hash_max_size
+
+Example
+
+```nginx
+types_hash_max_size 2048;
+```
+
+Optimizes MIME type lookup performance.
+
+Most administrators leave the default value unless tuning is required.
+
+---
+
+# server_tokens
+
+Example
+
+```nginx
+server_tokens off;
+```
+
+Instead of displaying
+
+```
+nginx/1.24.0
+```
+
+the response header shows only
+
+```
+nginx
+```
+
+This reduces unnecessary version disclosure.
+
+---
+
+# gzip
+
+Example
+
+```nginx
+gzip on;
+```
+
+Compresses responses before sending them.
+
+Benefits
+
+✔ Smaller Responses
+
+✔ Faster Websites
+
+✔ Lower Bandwidth Usage
+
+---
+
+# Server Blocks
+
+Inside the HTTP block,
+
+multiple Server Blocks can exist.
+
+Example
+
+```nginx
+server {
+
+    listen 80;
+
+    server_name example.com;
+
+}
+```
+
+Each Server Block usually represents one website.
+
+---
+
+# Location Blocks
+
+Example
+
+```nginx
+location / {
+
+}
+```
+
+Location Blocks decide how requests should be processed.
+
+Examples
+
+```
+/
+
+↓
+
+Homepage
+
+-------------------
+
+/images
+
+↓
+
+Static Files
+
+-------------------
+
+/api
+
+↓
+
+Backend Application
+```
+
+---
+
+# Configuration Workflow
+
+```
+nginx.conf
+
+↓
+
+Include Files
+
+↓
+
+Server Block
+
+↓
+
+Location Block
+
+↓
+
+Response
+```
+
+---
+
+# Validate Configuration
+
+Always test configuration before reloading.
+
+```bash
+sudo nginx -t
+```
+
+Expected Output
+
+```text
+syntax is ok
+
+test is successful
+```
+
+---
+
+# Reload Configuration
+
+```bash
+sudo systemctl reload nginx
+```
+
+Reload applies configuration changes without interrupting active users.
+
+---
+
+# Real Production Example
+
+```
+nginx.conf
+
+↓
+
+Security Settings
+
+↓
+
+Performance Settings
+
+↓
+
+Virtual Hosts
+
+↓
+
+Reverse Proxy
+
+↓
+
+Application
+```
+
+Every production request passes through this configuration.
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Editing nginx.conf without validating.
+
+Always execute
+
+```bash
+nginx -t
+```
+
+---
+
+### Mistake 2
+
+Placing Virtual Host configuration directly inside nginx.conf.
+
+Store websites inside
+
+```
+sites-available
+```
+
+and include them.
+
+---
+
+### Mistake 3
+
+Restarting instead of reloading.
+
+Use
+
+```bash
+systemctl reload nginx
+```
+
+whenever possible.
+
+---
+
+### Mistake 4
+
+Removing Include statements accidentally.
+
+Without them,
+
+Virtual Hosts may stop loading.
+
+---
+
+### Mistake 5
+
+Ignoring Error Logs after configuration changes.
+
+Always verify
+
+```
+/var/log/nginx/error.log
+```
+
+if Nginx fails to start.
+
+---
+
+# Interview Questions
+
+### Q1. Where is nginx.conf located?
+
+```
+/etc/nginx/nginx.conf
+```
+
+---
+
+### Q2. What is the purpose of the Events Block?
+
+It controls connection handling, including the maximum number of worker connections.
+
+---
+
+### Q3. What does `worker_processes auto;` do?
+
+It automatically selects the optimal number of Worker Processes based on available CPU cores.
+
+---
+
+### Q4. Why is `nginx -t` important?
+
+It validates the configuration before reloading or restarting Nginx.
+
+---
+
+### Q5. Why are Include directives used?
+
+They split configuration into multiple files, making it easier to manage multiple websites and settings.
+
+---
+
+# Production Best Practices
+
+✔ Use `worker_processes auto;`
+
+✔ Test configuration before reloading.
+
+✔ Keep Virtual Hosts in separate files.
+
+✔ Disable `server_tokens`.
+
+✔ Enable `sendfile`.
+
+✔ Enable `gzip`.
+
+✔ Monitor access and error logs.
+
+✔ Keep configuration clean using Include directives.
+
+---
+
+# Key Takeaways
+
+- `nginx.conf` is the main configuration file.
+- It controls global settings, events and HTTP behavior.
+- Include directives simplify configuration management.
+- Validate configurations before applying them.
+- A well-organized `nginx.conf` improves security, maintainability and performance.
+
+---
+
+# Next Section
+
+## 5.7 Starting, Stopping & Managing Nginx
+
+In the next section, we will learn:
+
+- Starting Nginx
+- Stopping Nginx
+- Restart vs Reload
+- Enable at Boot
+- Disable at Boot
+- Checking Status
+- Viewing Running Processes
+- Troubleshooting Startup Failures
+- Production Best Practices
+- Interview Questions
+---
+
+# 5.7 Starting, Stopping & Managing Nginx
+
+Installing Nginx is only the first step.
+
+In production,
+
+a DevOps Engineer must know how to manage the Nginx service efficiently.
+
+Daily tasks include:
+
+- Starting Nginx
+- Stopping Nginx
+- Restarting
+- Reloading Configuration
+- Checking Status
+- Viewing Logs
+- Troubleshooting Failures
+
+These commands are used almost every day in real production environments.
+
+---
+
+# Managing Nginx with systemd
+
+Modern Linux distributions use
+
+```
+systemd
+```
+
+to manage services.
+
+Nginx is controlled using the
+
+```
+systemctl
+```
+
+command.
+
+---
+
+# Start Nginx
+
+Start the web server.
+
+```bash
+sudo systemctl start nginx
+```
+
+The service immediately begins accepting client requests.
+
+---
+
+# Verify Status
+
+```bash
+sudo systemctl status nginx
+```
+
+Example
+
+```text
+● nginx.service
+
+Active: active (running)
+```
+
+The keyword
+
+```
+active (running)
+```
+
+indicates that Nginx is running successfully.
+
+---
+
+# Stop Nginx
+
+To stop the service
+
+```bash
+sudo systemctl stop nginx
+```
+
+After stopping,
+
+the server will no longer respond to HTTP or HTTPS requests.
+
+---
+
+# Restart Nginx
+
+Restart completely.
+
+```bash
+sudo systemctl restart nginx
+```
+
+Restart performs:
+
+```
+Stop
+
+↓
+
+Start
+```
+
+Use restart after:
+
+- Software Updates
+- Major Configuration Changes
+- Module Changes
+
+---
+
+# Reload Nginx
+
+Reload configuration.
+
+```bash
+sudo systemctl reload nginx
+```
+
+Reload performs
+
+```
+Read New Configuration
+
+↓
+
+Continue Existing Connections
+
+↓
+
+Apply Changes
+```
+
+No complete service interruption occurs.
+
+---
+
+# Restart vs Reload
+
+| Restart | Reload |
+|-----------|---------|
+| Stops Service | No Service Stop |
+| Starts Again | Reloads Configuration |
+| Existing Connections Interrupted | Existing Connections Continue |
+| Used After Major Changes | Used After Configuration Changes |
+
+In production,
+
+reload is usually preferred whenever possible.
+
+---
+
+# Enable Nginx at Boot
+
+Automatically start after server reboot.
+
+```bash
+sudo systemctl enable nginx
+```
+
+Verify
+
+```bash
+systemctl is-enabled nginx
+```
+
+Example
+
+```text
+enabled
+```
+
+---
+
+# Disable Auto Start
+
+```bash
+sudo systemctl disable nginx
+```
+
+Nginx will no longer start automatically after reboot.
+
+---
+
+# Reload Without systemctl
+
+Nginx also supports
+
+```bash
+sudo nginx -s reload
+```
+
+This sends a reload signal directly to the Master Process.
+
+---
+
+# Quit Gracefully
+
+Graceful shutdown
+
+```bash
+sudo nginx -s quit
+```
+
+Workflow
+
+```
+Stop Accepting New Requests
+
+↓
+
+Finish Existing Requests
+
+↓
+
+Exit
+```
+
+Useful during maintenance.
+
+---
+
+# Force Stop
+
+Immediate stop
+
+```bash
+sudo nginx -s stop
+```
+
+Existing connections terminate immediately.
+
+Generally,
+
+a graceful shutdown is preferred.
+
+---
+
+# Check Running Processes
+
+```bash
+ps -ef | grep nginx
+```
+
+Example
+
+```text
+root      Master Process
+
+www-data  Worker Process
+
+www-data  Worker Process
+```
+
+This confirms that Nginx is running.
+
+---
+
+# View Listening Ports
+
+```bash
+ss -tulpn | grep nginx
+```
+
+Example
+
+```text
+LISTEN
+
+0.0.0.0:80
+
+0.0.0.0:443
+```
+
+This confirms Nginx is listening for client connections.
+
+---
+
+# Verify Configuration
+
+Always validate configuration before reloading.
+
+```bash
+sudo nginx -t
+```
+
+Example
+
+```text
+syntax is ok
+
+test is successful
+```
+
+Never reload production configuration without testing.
+
+---
+
+# Display Version
+
+```bash
+nginx -v
+```
+
+Detailed information
+
+```bash
+nginx -V
+```
+
+Shows:
+
+- Version
+- Build Options
+- Modules
+- Compiler Information
+
+---
+
+# Check PID
+
+View the Master Process ID.
+
+```bash
+cat /run/nginx.pid
+```
+
+Example
+
+```text
+2385
+```
+
+Useful for troubleshooting.
+
+---
+
+# View Access Log
+
+```bash
+sudo tail -f /var/log/nginx/access.log
+```
+
+Example
+
+```text
+192.168.1.10
+
+GET /
+
+200
+```
+
+This displays incoming client requests in real time.
+
+---
+
+# View Error Log
+
+```bash
+sudo tail -f /var/log/nginx/error.log
+```
+
+Example
+
+```text
+Permission denied
+
+File not found
+
+SSL Error
+```
+
+Always check this log first when troubleshooting.
+
+---
+
+# Check Service During Boot
+
+Verify whether Nginx started automatically.
+
+```bash
+systemctl list-unit-files | grep nginx
+```
+
+Expected
+
+```text
+enabled
+```
+
+---
+
+# Reload Workflow
+
+```
+Edit Configuration
+
+↓
+
+nginx -t
+
+↓
+
+Reload
+
+↓
+
+Users Continue Working
+```
+
+This is the recommended production workflow.
+
+---
+
+# Restart Workflow
+
+```
+Configuration
+
+↓
+
+Restart
+
+↓
+
+Old Process Stops
+
+↓
+
+New Process Starts
+```
+
+Restart briefly interrupts service availability.
+
+---
+
+# Production Maintenance Workflow
+
+```
+Backup Configuration
+
+↓
+
+Edit
+
+↓
+
+nginx -t
+
+↓
+
+Reload
+
+↓
+
+Verify Logs
+
+↓
+
+Verify Website
+```
+
+Professional administrators follow this sequence.
+
+---
+
+# Troubleshooting Startup Failure
+
+Suppose Nginx does not start.
+
+Check:
+
+```bash
+systemctl status nginx
+```
+
+Then
+
+```bash
+journalctl -u nginx
+```
+
+Finally
+
+```bash
+tail -50 /var/log/nginx/error.log
+```
+
+These three commands solve most startup issues.
+
+---
+
+# Common Error Example
+
+Suppose
+
+```nginx
+server {
+
+listen 80
+
+}
+```
+
+Missing
+
+```
+;
+```
+
+Running
+
+```bash
+nginx -t
+```
+
+returns
+
+```text
+syntax error
+```
+
+Fix the configuration,
+
+then reload.
+
+---
+
+# Real Production Example
+
+A DevOps Engineer updates
+
+```
+SSL Certificate
+
+↓
+
+Edit Configuration
+
+↓
+
+nginx -t
+
+↓
+
+Reload
+
+↓
+
+Certificate Updated
+
+↓
+
+Users Continue Browsing
+```
+
+No downtime is experienced.
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Restarting after every configuration change.
+
+Reload is usually sufficient.
+
+---
+
+### Mistake 2
+
+Ignoring
+
+```bash
+nginx -t
+```
+
+Configuration errors may prevent Nginx from starting.
+
+---
+
+### Mistake 3
+
+Not checking
+
+```
+error.log
+```
+
+Most startup failures are explained there.
+
+---
+
+### Mistake 4
+
+Stopping Nginx accidentally.
+
+Verify service status before troubleshooting the website.
+
+---
+
+### Mistake 5
+
+Editing production configuration without taking a backup.
+
+Always keep a backup copy.
+
+---
+
+# Interview Questions
+
+### Q1. Which command starts Nginx?
+
+```bash
+sudo systemctl start nginx
+```
+
+---
+
+### Q2. Which command reloads configuration?
+
+```bash
+sudo systemctl reload nginx
+```
+
+---
+
+### Q3. What is the difference between restart and reload?
+
+Restart stops and starts the service.
+
+Reload applies configuration changes while allowing existing connections to continue.
+
+---
+
+### Q4. Which command validates the configuration?
+
+```bash
+sudo nginx -t
+```
+
+---
+
+### Q5. Which log should you check if Nginx fails to start?
+
+```
+/var/log/nginx/error.log
+```
+
+---
+
+### Q6. Which command displays detailed service logs?
+
+```bash
+journalctl -u nginx
+```
+
+---
+
+# Production Best Practices
+
+✔ Always run `nginx -t` before reload.
+
+✔ Prefer Reload over Restart whenever possible.
+
+✔ Monitor `error.log` continuously.
+
+✔ Keep configuration backups.
+
+✔ Verify listening ports after startup.
+
+✔ Enable automatic startup at boot.
+
+✔ Monitor Nginx using systemd and log files.
+
+✔ Use graceful shutdown during maintenance.
+
+---
+
+# Key Takeaways
+
+- `systemctl` is the standard way to manage Nginx.
+- Reload applies configuration changes with minimal disruption.
+- Restart should be reserved for situations where a full restart is required.
+- `nginx -t` is one of the most important commands for every Nginx administrator.
+- Logs and systemd tools are essential for troubleshooting production issues.
+
+---
+
+# Next Section
+
+## 5.8 Serving Static Websites
+
+In the next section, we will learn:
+
+- What is Static Website Hosting?
+- Default Document Root
+- Hosting HTML, CSS and JavaScript
+- Changing the Root Directory
+- Index Files
+- File Permissions
+- Deploying a Static Website
+- Production Best Practices
+- Interview Questions
+---
+
+# 5.8 Serving Static Websites
+
+One of the biggest strengths of Nginx is its ability to serve **static websites** extremely fast.
+
+Before learning Reverse Proxy or Load Balancing,
+
+every DevOps Engineer should know how to host a simple website using Nginx.
+
+A static website consists of files that are sent directly to the browser without any backend processing.
+
+Examples include:
+
+- Company Landing Pages
+- Portfolio Websites
+- Documentation Sites
+- Product Catalogs
+- HTML Templates
+- Maintenance Pages
+
+---
+
+# What is a Static Website?
+
+A static website contains pre-built files.
+
+Examples
+
+- HTML
+- CSS
+- JavaScript
+- Images
+- Fonts
+- Videos
+
+The content remains the same until someone edits the files.
+
+Unlike dynamic applications,
+
+there is no database or backend logic involved.
+
+---
+
+# Static Website Workflow
+
+```
+Browser
+
+↓
+
+Nginx
+
+↓
+
+HTML
+
+↓
+
+CSS
+
+↓
+
+JavaScript
+
+↓
+
+Images
+
+↓
+
+Browser
+```
+
+Nginx directly serves files from the file system.
+
+---
+
+# Default Document Root
+
+On Ubuntu,
+
+Nginx serves files from:
+
+```text
+/var/www/html/
+```
+
+Example
+
+```
+/var/www/html
+
+│
+
+├── index.html
+
+├── style.css
+
+├── logo.png
+
+└── script.js
+```
+
+---
+
+# Verify Default Website
+
+Open
+
+```
+http://SERVER-IP
+```
+
+If installation is correct,
+
+the default Nginx Welcome Page appears.
+
+---
+
+# Replace Default Website
+
+Move into the document root.
+
+```bash
+cd /var/www/html
+```
+
+View files.
+
+```bash
+ls
+```
+
+You will usually see:
+
+```
+index.nginx-debian.html
+```
+
+or
+
+```
+index.html
+```
+
+depending on the Linux distribution.
+
+---
+
+# Create a Simple Website
+
+Create a new HTML file.
+
+```bash
+sudo nano /var/www/html/index.html
+```
+
+Example
+
+```html
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>My First Website</title>
+
+</head>
+
+<body>
+
+<h1>Welcome to Nginx</h1>
+
+<p>Website Hosted Successfully</p>
+
+</body>
+
+</html>
+```
+
+Save the file.
+
+---
+
+# Open Browser
+
+Visit
+
+```
+http://SERVER-IP
+```
+
+Example
+
+```
+http://192.168.1.20
+```
+
+Your webpage should appear immediately.
+
+---
+
+# Serving Images
+
+Suppose you copy
+
+```
+logo.png
+```
+
+into
+
+```
+/var/www/html/images/
+```
+
+Browser
+
+```
+http://SERVER-IP/images/logo.png
+```
+
+Nginx returns the image directly.
+
+---
+
+# Serving CSS
+
+Example
+
+```
+style.css
+```
+
+```css
+body{
+
+background:#f4f4f4;
+
+font-family:Arial;
+
+}
+```
+
+HTML
+
+```html
+<link rel="stylesheet"
+
+href="style.css">
+```
+
+The browser downloads the CSS file through Nginx.
+
+---
+
+# Serving JavaScript
+
+Example
+
+```
+script.js
+```
+
+```javascript
+alert("Welcome to Nginx");
+```
+
+HTML
+
+```html
+<script src="script.js"></script>
+```
+
+Nginx serves JavaScript files like any other static file.
+
+---
+
+# Website Directory Example
+
+```
+/var/www/html
+
+│
+
+├── index.html
+
+├── about.html
+
+├── contact.html
+
+├── css/
+
+│      style.css
+
+├── js/
+
+│      app.js
+
+└── images/
+
+       logo.png
+```
+
+This is a common layout for simple websites.
+
+---
+
+# File Permissions
+
+Website files should be readable by the Nginx user.
+
+Example
+
+```bash
+sudo chown -R www-data:www-data /var/www/html
+
+sudo chmod -R 755 /var/www/html
+```
+
+Ubuntu uses
+
+```
+www-data
+```
+
+Rocky Linux commonly uses
+
+```
+nginx
+```
+
+Always verify the correct service account for your distribution.
+
+---
+
+# Index File
+
+When users visit
+
+```
+http://SERVER-IP
+```
+
+Nginx automatically searches for:
+
+```
+index.html
+
+index.htm
+```
+
+depending on configuration.
+
+This behavior is controlled using the
+
+```nginx
+index
+```
+
+directive.
+
+---
+
+# Example
+
+```nginx
+index index.html;
+```
+
+When a user requests
+
+```
+/
+```
+
+Nginx serves
+
+```
+index.html
+```
+
+---
+
+# Changing the Document Root
+
+Suppose your website is stored in
+
+```
+/var/www/company
+```
+
+Configuration
+
+```nginx
+server {
+
+    root /var/www/company;
+
+    index index.html;
+
+}
+```
+
+Reload
+
+```bash
+sudo nginx -t
+
+sudo systemctl reload nginx
+```
+
+Now Nginx serves files from the new location.
+
+---
+
+# Multiple Static Websites
+
+Example
+
+```
+/var/www
+
+├── company.com
+
+├── portfolio.com
+
+├── blog.com
+
+└── docs.company.com
+```
+
+Each website has:
+
+- Separate Directory
+- Separate Configuration
+- Separate Domain
+
+---
+
+# Static Website Deployment Workflow
+
+```
+Create Files
+
+↓
+
+Copy Files
+
+↓
+
+Configure Root
+
+↓
+
+Test Configuration
+
+↓
+
+Reload Nginx
+
+↓
+
+Open Browser
+```
+
+---
+
+# Static Website on AWS EC2
+
+Steps
+
+```
+Launch EC2
+
+↓
+
+Install Nginx
+
+↓
+
+Allow Port 80
+
+↓
+
+Upload Website
+
+↓
+
+Reload Nginx
+
+↓
+
+Access Public IP
+```
+
+Your website becomes available globally.
+
+---
+
+# Browser Request Example
+
+User requests
+
+```
+GET /
+
+↓
+
+Nginx
+
+↓
+
+index.html
+
+↓
+
+HTTP 200
+
+↓
+
+Browser Displays Website
+```
+
+---
+
+# Common MIME Types
+
+| File | MIME Type |
+|-------|-----------|
+| HTML | text/html |
+| CSS | text/css |
+| JS | application/javascript |
+| PNG | image/png |
+| JPG | image/jpeg |
+| SVG | image/svg+xml |
+
+Nginx automatically sets these headers using `mime.types`.
+
+---
+
+# HTTP Status Codes
+
+Common responses
+
+| Code | Meaning |
+|------|----------|
+| 200 | OK |
+| 301 | Permanent Redirect |
+| 302 | Temporary Redirect |
+| 403 | Forbidden |
+| 404 | File Not Found |
+| 500 | Internal Server Error |
+
+Understanding these codes helps during troubleshooting.
+
+---
+
+# Troubleshooting
+
+Suppose the browser shows
+
+```
+404 Not Found
+```
+
+Check:
+
+- Correct document root
+- File exists
+- File permissions
+- Configuration
+- Reload completed
+
+Useful commands
+
+```bash
+sudo nginx -t
+
+sudo systemctl status nginx
+
+sudo tail -f /var/log/nginx/error.log
+```
+
+---
+
+# Real Production Example
+
+A company hosts:
+
+```
+Corporate Website
+
+↓
+
+Nginx
+
+↓
+
+HTML
+
+↓
+
+CSS
+
+↓
+
+JavaScript
+
+↓
+
+Images
+```
+
+No application server is required because the website is completely static.
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Uploading files to the wrong directory.
+
+Always verify the configured `root`.
+
+---
+
+### Mistake 2
+
+Incorrect file permissions.
+
+Nginx must have permission to read website files.
+
+---
+
+### Mistake 3
+
+Forgetting to reload Nginx after changing the document root.
+
+Always validate and reload the configuration.
+
+---
+
+### Mistake 4
+
+Using Windows-style file paths inside Linux configurations.
+
+Always use Linux paths.
+
+Example
+
+```
+/var/www/html
+```
+
+---
+
+# Interview Questions
+
+### Q1. What is a static website?
+
+A static website consists of fixed files such as HTML, CSS and JavaScript that are served directly without backend processing.
+
+---
+
+### Q2. What is the default document root on Ubuntu?
+
+```
+/var/www/html/
+```
+
+---
+
+### Q3. Which file is usually served first?
+
+```
+index.html
+```
+
+---
+
+### Q4. Which directive specifies the website directory?
+
+```nginx
+root
+```
+
+---
+
+### Q5. Which command validates the Nginx configuration?
+
+```bash
+sudo nginx -t
+```
+
+---
+
+# Production Best Practices
+
+✔ Keep website files in separate directories.
+
+✔ Use proper ownership and permissions.
+
+✔ Test configuration before reloading.
+
+✔ Enable HTTPS for public websites.
+
+✔ Monitor access and error logs.
+
+✔ Keep static assets organized.
+
+✔ Back up website files before deployment.
+
+---
+
+# Key Takeaways
+
+- Nginx serves static websites extremely efficiently.
+- Static websites consist of HTML, CSS, JavaScript and media files.
+- The default document root is usually `/var/www/html`.
+- The `root` directive determines where website files are located.
+- Proper permissions and configuration are essential for successful deployment.
+
+---
+
+# Next Section
+
+## 5.9 Virtual Hosts (Server Blocks)
+
+In the next section, we will learn:
+
+- What are Virtual Hosts?
+- Server Blocks
+- Hosting Multiple Websites
+- Domain Configuration
+- Server Names
+- Root Directories
+- Default Server
+- Production Best Practices
+- Interview Questions
+---
+
+# 5.9 Virtual Hosts (Server Blocks)
+
+Imagine you own three websites:
+
+- company.com
+- blog.company.com
+- shop.company.com
+
+Do you need three separate Nginx installations?
+
+**No.**
+
+A single Nginx server can host hundreds or even thousands of websites.
+
+This is possible using **Virtual Hosts**, known in Nginx as **Server Blocks**.
+
+Server Blocks allow Nginx to decide which website should respond to a client's request based on the requested domain name.
+
+---
+
+# What is a Virtual Host?
+
+A Virtual Host is a configuration that allows one web server to host multiple websites.
+
+In Nginx,
+
+Virtual Hosts are called
+
+```
+Server Blocks
+```
+
+Each Server Block has:
+
+- Domain Name
+- Document Root
+- SSL Configuration
+- Log Files
+- Security Rules
+
+---
+
+# Why Do We Need Server Blocks?
+
+Without Server Blocks
+
+```
+One Server
+
+↓
+
+One Website
+```
+
+With Server Blocks
+
+```
+One Server
+
+↓
+
+Website A
+
+↓
+
+Website B
+
+↓
+
+Website C
+```
+
+One Nginx installation can serve multiple domains independently.
+
+---
+
+# Basic Architecture
+
+```
+Internet
+
+↓
+
+Nginx
+
+│
+
+├── company.com
+
+├── blog.company.com
+
+└── shop.company.com
+```
+
+Nginx chooses the correct website based on the requested domain.
+
+---
+
+# How Nginx Chooses a Website
+
+Suppose a browser requests
+
+```
+https://company.com
+```
+
+Workflow
+
+```
+Browser
+
+↓
+
+Nginx
+
+↓
+
+Server Name Match
+
+↓
+
+company.com Server Block
+
+↓
+
+Website Response
+```
+
+---
+
+# Server Block Structure
+
+Example
+
+```nginx
+server {
+
+    listen 80;
+
+    server_name company.com;
+
+    root /var/www/company;
+
+    index index.html;
+
+}
+```
+
+Every website normally has its own Server Block.
+
+---
+
+# listen Directive
+
+Example
+
+```nginx
+listen 80;
+```
+
+This tells Nginx to listen on
+
+```
+Port 80
+```
+
+HTTPS websites usually use
+
+```nginx
+listen 443 ssl;
+```
+
+---
+
+# server_name Directive
+
+Example
+
+```nginx
+server_name company.com;
+```
+
+Nginx compares the incoming domain name with this value.
+
+If they match,
+
+this Server Block is selected.
+
+---
+
+# root Directive
+
+Example
+
+```nginx
+root /var/www/company;
+```
+
+This specifies where the website files are stored.
+
+---
+
+# index Directive
+
+Example
+
+```nginx
+index index.html;
+```
+
+When a user requests
+
+```
+/
+```
+
+Nginx automatically serves
+
+```
+index.html
+```
+
+---
+
+# Hosting Multiple Websites
+
+Example Directory
+
+```
+/var/www/
+
+├── company/
+
+├── blog/
+
+└── shop/
+```
+
+Configuration
+
+```
+company.conf
+
+blog.conf
+
+shop.conf
+```
+
+Each website has its own configuration file.
+
+---
+
+# Example Configuration
+
+Website 1
+
+```nginx
+server {
+
+    listen 80;
+
+    server_name company.com;
+
+    root /var/www/company;
+
+}
+```
+
+Website 2
+
+```nginx
+server {
+
+    listen 80;
+
+    server_name blog.company.com;
+
+    root /var/www/blog;
+
+}
+```
+
+Website 3
+
+```nginx
+server {
+
+    listen 80;
+
+    server_name shop.company.com;
+
+    root /var/www/shop;
+
+}
+```
+
+Each website serves different content.
+
+---
+
+# Configuration Location
+
+Ubuntu
+
+```
+/etc/nginx/sites-available/
+```
+
+Example
+
+```
+company.conf
+
+blog.conf
+
+shop.conf
+```
+
+---
+
+# Enable Website
+
+Create a symbolic link.
+
+```bash
+sudo ln -s /etc/nginx/sites-available/company.conf \
+/etc/nginx/sites-enabled/
+```
+
+Repeat for each website.
+
+---
+
+# Verify Configuration
+
+```bash
+sudo nginx -t
+```
+
+Expected
+
+```text
+syntax is ok
+
+test is successful
+```
+
+---
+
+# Reload Nginx
+
+```bash
+sudo systemctl reload nginx
+```
+
+The new website becomes active.
+
+---
+
+# Default Server
+
+Sometimes a client requests an unknown domain.
+
+Example
+
+```
+randomdomain.com
+```
+
+Nginx serves the
+
+```
+Default Server
+```
+
+Example
+
+```nginx
+listen 80 default_server;
+```
+
+This configuration handles unmatched requests.
+
+---
+
+# Wildcard Domains
+
+Example
+
+```nginx
+server_name *.company.com;
+```
+
+Matches
+
+```
+api.company.com
+
+blog.company.com
+
+dev.company.com
+```
+
+Useful for subdomain-based applications.
+
+---
+
+# Multiple Domain Names
+
+Example
+
+```nginx
+server_name company.com www.company.com;
+```
+
+Both domains use the same Server Block.
+
+---
+
+# Redirect WWW to Non-WWW
+
+Example
+
+```
+www.company.com
+
+↓
+
+Redirect
+
+↓
+
+company.com
+```
+
+This improves SEO and keeps URLs consistent.
+
+---
+
+# Separate Log Files
+
+Each website should maintain separate logs.
+
+Example
+
+```nginx
+access_log /var/log/nginx/company.access.log;
+
+error_log /var/log/nginx/company.error.log;
+```
+
+Troubleshooting becomes much easier.
+
+---
+
+# Separate SSL Certificates
+
+Production websites generally use individual SSL certificates.
+
+Example
+
+```
+company.com
+
+↓
+
+company.crt
+
+-----------------------
+
+shop.company.com
+
+↓
+
+shop.crt
+```
+
+This improves security and certificate management.
+
+---
+
+# Real Production Architecture
+
+```
+Internet
+
+↓
+
+Nginx
+
+│
+
+├── company.com
+
+├── api.company.com
+
+├── admin.company.com
+
+└── blog.company.com
+```
+
+Each website has:
+
+- Separate Configuration
+- Separate Logs
+- Separate SSL
+- Separate Document Root
+
+---
+
+# Virtual Host Workflow
+
+```
+Browser
+
+↓
+
+DNS
+
+↓
+
+Nginx
+
+↓
+
+Server Name Match
+
+↓
+
+Document Root
+
+↓
+
+Website
+```
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Putting every website inside one Server Block.
+
+Each website should have its own configuration.
+
+---
+
+### Mistake 2
+
+Forgetting to enable the configuration using a symbolic link.
+
+Only configurations inside
+
+```
+sites-enabled
+```
+
+are loaded.
+
+---
+
+### Mistake 3
+
+Reloading without testing.
+
+Always execute
+
+```bash
+sudo nginx -t
+```
+
+---
+
+### Mistake 4
+
+Using the wrong document root.
+
+Verify the
+
+```nginx
+root
+```
+
+directive carefully.
+
+---
+
+### Mistake 5
+
+Sharing one log file among multiple websites.
+
+Separate logs simplify debugging.
+
+---
+
+# Interview Questions
+
+### Q1. What is a Virtual Host in Nginx?
+
+A Virtual Host (Server Block) allows one Nginx server to host multiple websites.
+
+---
+
+### Q2. Which directive specifies the domain name?
+
+```nginx
+server_name
+```
+
+---
+
+### Q3. Which directive specifies the website directory?
+
+```nginx
+root
+```
+
+---
+
+### Q4. Where are Server Block configurations stored on Ubuntu?
+
+```
+/etc/nginx/sites-available/
+```
+
+---
+
+### Q5. Which command enables a website?
+
+By creating a symbolic link from
+
+```
+sites-available
+```
+
+to
+
+```
+sites-enabled
+```
+
+and then reloading Nginx.
+
+---
+
+# Production Best Practices
+
+✔ One Server Block per website.
+
+✔ Keep separate document roots.
+
+✔ Maintain separate access and error logs.
+
+✔ Use individual SSL certificates where appropriate.
+
+✔ Test configuration before reload.
+
+✔ Keep configuration files organized.
+
+✔ Remove unused Server Blocks.
+
+✔ Use meaningful configuration file names.
+
+---
+
+# Key Takeaways
+
+- Server Blocks allow multiple websites on a single Nginx server.
+- The `server_name` directive matches incoming domains.
+- The `root` directive specifies website files.
+- Each website should have its own configuration and logs.
+- Server Blocks are a core concept for every production Nginx deployment.
+
+---
+
+# Next Section
+
+## 5.10 Reverse Proxy
+
+In the next section, we will learn:
+
+- What is a Reverse Proxy?
+- Forward Proxy vs Reverse Proxy
+- Request Flow
+- Proxy Pass
+- Backend Applications
+- Security Benefits
+- Load Balancing Integration
+- Production Architectures
+- Best Practices
+- Interview Questions   
