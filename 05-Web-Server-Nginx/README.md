@@ -1,0 +1,1348 @@
+# Chapter 5 — Web Server (Nginx)
+
+---
+
+# Chapter Overview
+
+After learning AWS fundamentals,
+
+the next step is understanding **Web Servers**.
+
+Almost every website, API, microservice and cloud application requires a web server.
+
+One of the most popular web servers in the world is **Nginx** (pronounced "Engine-X").
+
+Nginx is widely used by companies such as:
+
+- Netflix
+- Airbnb
+- GitHub
+- Dropbox
+- WordPress.com
+- Cloudflare
+- Shopify
+
+For DevOps Engineers,
+
+Nginx is one of the most important tools to master.
+
+---
+
+# What You Will Learn
+
+In this chapter, we will cover:
+
+- What is a Web Server?
+- What is Nginx?
+- History of Nginx
+- Nginx Architecture
+- Installing Nginx
+- Nginx Configuration Files
+- Serving Static Websites
+- Reverse Proxy
+- Load Balancing
+- Virtual Hosts (Server Blocks)
+- SSL/TLS with HTTPS
+- URL Rewriting
+- Compression
+- Caching
+- Security Hardening
+- Logging
+- Performance Tuning
+- Monitoring
+- Troubleshooting
+- Production Deployment
+- Real-world Architectures
+- Interview Questions
+
+---
+
+# Chapter Structure
+
+## 5.1 Introduction to Web Servers
+
+## 5.2 What is Nginx?
+
+## 5.3 Nginx Architecture
+
+## 5.4 Installing Nginx
+
+## 5.5 Nginx Directory Structure
+
+## 5.6 Understanding nginx.conf
+
+## 5.7 Starting, Stopping & Managing Nginx
+
+## 5.8 Serving Static Websites
+
+## 5.9 Virtual Hosts (Server Blocks)
+
+## 5.10 Reverse Proxy
+
+## 5.11 Load Balancing
+
+## 5.12 SSL/TLS (HTTPS)
+
+## 5.13 URL Rewriting & Redirects
+
+## 5.14 Gzip Compression
+
+## 5.15 Caching
+
+## 5.16 Access Logs & Error Logs
+
+## 5.17 Security Best Practices
+
+## 5.18 Performance Tuning
+
+## 5.19 Monitoring Nginx
+
+## 5.20 Troubleshooting
+
+## 5.21 Real Production Architecture
+
+## 5.22 Interview Questions
+
+## Chapter Summary
+
+---
+
+# Prerequisites
+
+Before starting this chapter, you should know:
+
+- Linux Basics
+- Networking Basics
+- AWS EC2 Basics
+- SSH
+- Basic Terminal Commands
+
+---
+
+# Lab Environment
+
+Throughout this chapter, we will use:
+
+- Ubuntu Server
+- Rocky Linux (where applicable)
+- Amazon EC2
+- AWS Security Groups
+- Browser
+- SSH Terminal
+
+---
+
+# Learning Outcome
+
+After completing this chapter, you will be able to:
+
+✔ Install Nginx
+
+✔ Configure Nginx
+
+✔ Host Websites
+
+✔ Configure Reverse Proxy
+
+✔ Configure Load Balancing
+
+✔ Enable HTTPS
+
+✔ Troubleshoot Nginx
+
+✔ Deploy Production Applications
+
+✔ Secure Nginx
+
+✔ Answer Nginx Interview Questions
+
+---
+
+# Next Section
+
+## 5.1 Introduction to Web Servers
+---
+
+# 5.1 Introduction to Web Servers
+
+Every website you open on the Internet is served by a **Web Server**.
+
+For example,
+
+when you open:
+
+- google.com
+- amazon.com
+- github.com
+- chat.openai.com
+- wikipedia.org
+
+your browser sends a request to a web server.
+
+The web server processes the request and sends back the required web page.
+
+Without a web server,
+
+websites cannot be accessed over the Internet.
+
+---
+
+# What is a Web Server?
+
+A **Web Server** is software (and sometimes the underlying hardware) that receives HTTP/HTTPS requests from clients and returns web content.
+
+It serves:
+
+- HTML Pages
+- CSS Files
+- JavaScript Files
+- Images
+- Videos
+- PDFs
+- APIs
+- Downloads
+
+A web server acts as the bridge between users and web applications.
+
+---
+
+# Real-Life Analogy
+
+Imagine a restaurant.
+
+```
+Customer
+
+↓
+
+Waiter
+
+↓
+
+Kitchen
+
+↓
+
+Food
+
+↓
+
+Customer
+```
+
+Here,
+
+- Customer → Browser
+- Waiter → Web Server
+- Kitchen → Application
+- Food → Web Page
+
+The web server receives requests and delivers responses.
+
+---
+
+# Basic Web Request Flow
+
+```
+Browser
+
+↓
+
+Internet
+
+↓
+
+Web Server
+
+↓
+
+Application
+
+↓
+
+Database
+
+↓
+
+Response
+
+↓
+
+Browser
+```
+
+This is the basic workflow followed by almost every modern web application.
+
+---
+
+# Example
+
+Suppose you type:
+
+```
+https://www.amazon.com
+```
+
+The browser performs:
+
+```
+Request
+
+↓
+
+Amazon Web Server
+
+↓
+
+Application
+
+↓
+
+Database
+
+↓
+
+HTML Response
+
+↓
+
+Browser Displays Page
+```
+
+Within milliseconds,
+
+the webpage appears.
+
+---
+
+# Why Do We Need Web Servers?
+
+Suppose an application exists,
+
+but no web server is available.
+
+```
+User
+
+↓
+
+Internet
+
+↓
+
+???
+
+↓
+
+Application
+```
+
+Users cannot communicate with the application directly.
+
+A web server provides:
+
+- Communication
+- Security
+- Request Handling
+- Response Generation
+
+---
+
+# Responsibilities of a Web Server
+
+A web server performs many tasks.
+
+Examples include:
+
+- Accept Client Requests
+- Serve Static Files
+- Forward Requests
+- Manage Connections
+- Handle HTTPS
+- Compress Responses
+- Log Requests
+- Authenticate Users
+- Balance Traffic
+- Cache Content
+
+---
+
+# Static Content
+
+Static content does not change frequently.
+
+Examples
+
+- HTML
+- CSS
+- JavaScript
+- Images
+- Fonts
+- Videos
+
+Example
+
+```
+Browser
+
+↓
+
+Nginx
+
+↓
+
+logo.png
+```
+
+The file is returned immediately.
+
+---
+
+# Dynamic Content
+
+Dynamic content is generated by an application.
+
+Example
+
+```
+Browser
+
+↓
+
+Nginx
+
+↓
+
+Java Application
+
+↓
+
+Database
+
+↓
+
+HTML Response
+```
+
+The page content depends on user input or database data.
+
+---
+
+# Static vs Dynamic Content
+
+| Static | Dynamic |
+|----------|----------|
+| HTML | Login Page |
+| CSS | Shopping Cart |
+| Images | Bank Balance |
+| JavaScript | User Dashboard |
+| PDFs | Product Search |
+
+Static content is served directly.
+
+Dynamic content is generated in real time.
+
+---
+
+# HTTP Request Flow
+
+```
+Browser
+
+↓
+
+HTTP Request
+
+↓
+
+Web Server
+
+↓
+
+Application
+
+↓
+
+HTTP Response
+
+↓
+
+Browser
+```
+
+The browser renders the response for the user.
+
+---
+
+# Components of a Website
+
+A modern website usually contains:
+
+```
+Browser
+
+↓
+
+Web Server
+
+↓
+
+Application Server
+
+↓
+
+Database
+
+↓
+
+Storage
+```
+
+Each component has a different responsibility.
+
+---
+
+# Example Architecture
+
+```
+Internet
+
+↓
+
+Load Balancer
+
+↓
+
+Nginx
+
+↓
+
+Application
+
+↓
+
+MySQL
+```
+
+This is one of the most common production architectures.
+
+---
+
+# Types of Web Servers
+
+Popular web servers include:
+
+- Nginx
+- Apache HTTP Server
+- Microsoft IIS
+- LiteSpeed
+- Caddy
+
+Among these,
+
+Nginx is one of the most widely used because of its performance and scalability.
+
+---
+
+# Common Uses of Web Servers
+
+Web servers are used for:
+
+- Hosting Websites
+- Reverse Proxy
+- API Gateway
+- Load Balancing
+- SSL Termination
+- Static Website Hosting
+- File Downloads
+- Streaming Content
+
+---
+
+# Common Protocols
+
+Web servers mainly communicate using:
+
+| Protocol | Purpose |
+|----------|----------|
+| HTTP | Web Traffic |
+| HTTPS | Secure Web Traffic |
+| WebSocket | Real-time Communication |
+| HTTP/2 | Faster Web Communication |
+| HTTP/3 | Modern High-Performance Web Protocol |
+
+---
+
+# HTTP vs HTTPS
+
+HTTP
+
+```
+Browser
+
+↓
+
+Plain Text
+
+↓
+
+Server
+```
+
+HTTPS
+
+```
+Browser
+
+↓
+
+Encrypted
+
+↓
+
+Server
+```
+
+HTTPS protects data during transmission.
+
+---
+
+# Ports Used
+
+| Port | Protocol |
+|------|----------|
+| 80 | HTTP |
+| 443 | HTTPS |
+
+These are the most common ports for web traffic.
+
+---
+
+# Web Server in DevOps
+
+Every DevOps Engineer works with web servers.
+
+Examples
+
+- Hosting Applications
+- Reverse Proxy
+- SSL Configuration
+- Load Balancing
+- Docker Containers
+- Kubernetes Ingress
+- API Routing
+
+Understanding web servers is essential for production deployments.
+
+---
+
+# Real Production Example
+
+An e-commerce application uses:
+
+```
+Users
+
+↓
+
+Internet
+
+↓
+
+Load Balancer
+
+↓
+
+Nginx
+
+↓
+
+Java Spring Boot
+
+↓
+
+MySQL
+```
+
+Nginx receives all requests before forwarding them to the application.
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Thinking a web server and an application server are the same.
+
+A web server primarily handles HTTP requests and static content, while an application server executes business logic.
+
+---
+
+### Mistake 2
+
+Believing browsers communicate directly with databases.
+
+Browsers communicate with web servers or APIs, not directly with production databases.
+
+---
+
+### Mistake 3
+
+Ignoring HTTPS.
+
+Modern production websites should use HTTPS to protect user data.
+
+---
+
+# Interview Questions
+
+### Q1. What is a Web Server?
+
+A web server receives HTTP/HTTPS requests and serves web content to clients.
+
+---
+
+### Q2. Name some popular Web Servers.
+
+- Nginx
+- Apache HTTP Server
+- Microsoft IIS
+- LiteSpeed
+- Caddy
+
+---
+
+### Q3. What is the difference between static and dynamic content?
+
+Static content is served directly as stored files.
+
+Dynamic content is generated by an application at request time.
+
+---
+
+### Q4. Which ports are commonly used for HTTP and HTTPS?
+
+HTTP uses Port **80**.
+
+HTTPS uses Port **443**.
+
+---
+
+### Q5. Why is HTTPS preferred over HTTP?
+
+HTTPS encrypts communication between the client and the server, improving security.
+
+---
+
+# Key Takeaways
+
+- A web server handles HTTP/HTTPS requests.
+- It serves both static and dynamic content.
+- Nginx is one of the most popular web servers in the world.
+- Web servers play a central role in hosting websites and APIs.
+- Understanding web servers is the first step before learning Nginx configuration.
+
+---
+
+# Next Section
+
+## 5.2 What is Nginx?
+
+In the next section, we will learn:
+
+- What is Nginx?
+- History of Nginx
+- Why Nginx was created
+- Features of Nginx
+- Nginx vs Apache
+- Production Use Cases
+- Real-world Examples
+- Interview Questions
+---
+
+# 5.2 What is Nginx?
+
+After understanding what a Web Server is,
+
+let's learn about one of the most popular web servers in the world—
+
+**Nginx**.
+
+Today,
+
+millions of websites and APIs run behind Nginx because of its:
+
+- Speed
+- Stability
+- Scalability
+- Low Memory Usage
+
+Nginx is one of the most essential tools for every DevOps Engineer.
+
+---
+
+# What is Nginx?
+
+Nginx (pronounced **Engine-X**) is an open-source web server developed to efficiently serve web applications.
+
+Besides serving websites,
+
+Nginx also works as:
+
+- Reverse Proxy
+- Load Balancer
+- API Gateway
+- HTTP Cache
+- SSL Termination Server
+- Media Streaming Server
+
+It is much more than just a web server.
+
+---
+
+# Nginx Pronunciation
+
+Although written as:
+
+```
+Nginx
+```
+
+it is pronounced:
+
+```
+Engine-X
+```
+
+---
+
+# History of Nginx
+
+Nginx was created by
+
+```
+Igor Sysoev
+```
+
+The first public release was in **2004**.
+
+It was developed to solve a common problem called the:
+
+```
+C10K Problem
+```
+
+---
+
+# What is the C10K Problem?
+
+Earlier web servers struggled to handle
+
+```
+10,000
+
+Concurrent Connections
+```
+
+Nginx introduced an event-driven architecture that could efficiently manage thousands of simultaneous client connections with relatively low resource usage.
+
+This made Nginx extremely popular.
+
+---
+
+# Why Was Nginx Created?
+
+Older web servers created:
+
+```
+One Thread
+
+or
+
+One Process
+
+↓
+
+Per User
+```
+
+As users increased,
+
+memory consumption increased significantly.
+
+Nginx introduced an event-driven, asynchronous architecture that handles many connections more efficiently.
+
+---
+
+# Evolution
+
+```
+Traditional Servers
+
+↓
+
+Performance Issues
+
+↓
+
+Nginx Developed
+
+↓
+
+High Performance
+
+↓
+
+Global Adoption
+```
+
+---
+
+# Nginx Architecture Overview
+
+```
+Users
+
+↓
+
+Nginx
+
+↓
+
+Application
+
+↓
+
+Database
+```
+
+Nginx sits between users and applications.
+
+---
+
+# What Can Nginx Do?
+
+Nginx provides many features.
+
+Examples
+
+- Host Websites
+- Reverse Proxy
+- Load Balancing
+- SSL Termination
+- Static File Serving
+- Caching
+- URL Rewriting
+- Compression
+- API Gateway
+- Rate Limiting
+
+---
+
+# Why is Nginx So Popular?
+
+Nginx is known for:
+
+✔ High Performance
+
+✔ Low Memory Usage
+
+✔ Fast Response
+
+✔ High Concurrency
+
+✔ Easy Configuration
+
+✔ Stability
+
+✔ Scalability
+
+---
+
+# Companies Using Nginx
+
+Many organizations use Nginx in production.
+
+Examples include:
+
+- Netflix
+- GitHub
+- Dropbox
+- Cloudflare
+- WordPress.com
+- Shopify
+- Adobe
+- Cisco
+
+Millions of websites worldwide use Nginx.
+
+---
+
+# Nginx Workflow
+
+```
+Browser
+
+↓
+
+HTTP Request
+
+↓
+
+Nginx
+
+↓
+
+Application
+
+↓
+
+Database
+
+↓
+
+Nginx
+
+↓
+
+HTTP Response
+
+↓
+
+Browser
+```
+
+Nginx handles communication between clients and backend applications.
+
+---
+
+# Nginx as a Static Web Server
+
+Example
+
+```
+Browser
+
+↓
+
+Nginx
+
+↓
+
+index.html
+```
+
+Nginx immediately serves the HTML file.
+
+No backend application is required.
+
+---
+
+# Nginx as a Reverse Proxy
+
+Example
+
+```
+Users
+
+↓
+
+Nginx
+
+↓
+
+Spring Boot
+
+↓
+
+Database
+```
+
+Users communicate only with Nginx.
+
+The backend application remains hidden.
+
+---
+
+# Nginx as a Load Balancer
+
+```
+Users
+
+↓
+
+Nginx
+
+↓
+
+Server-1
+
+Server-2
+
+Server-3
+```
+
+Traffic is distributed across multiple backend servers.
+
+---
+
+# Nginx as an API Gateway
+
+```
+Users
+
+↓
+
+Nginx
+
+↓
+
+Authentication
+
+↓
+
+Microservices
+```
+
+Nginx can route API requests to different backend services.
+
+---
+
+# Nginx as SSL Terminator
+
+```
+HTTPS
+
+↓
+
+Nginx
+
+↓
+
+HTTP
+
+↓
+
+Application
+```
+
+Nginx handles SSL certificates,
+
+reducing complexity for backend applications.
+
+---
+
+# Event-Driven Architecture
+
+Unlike traditional web servers,
+
+Nginx uses an:
+
+```
+Event Loop
+```
+
+Instead of creating one thread per request,
+
+it processes many connections asynchronously.
+
+This results in:
+
+- Better Performance
+- Lower Memory Usage
+- Higher Scalability
+
+---
+
+# Nginx Process Model
+
+```
+Master Process
+
+↓
+
+Worker Process
+
+↓
+
+Worker Process
+
+↓
+
+Worker Process
+```
+
+The Master Process manages configuration and workers.
+
+Worker Processes handle client requests.
+
+---
+
+# Advantages of Nginx
+
+✔ High Performance
+
+✔ Lightweight
+
+✔ Open Source
+
+✔ Cross Platform
+
+✔ Easy Configuration
+
+✔ Reverse Proxy Support
+
+✔ Load Balancing
+
+✔ SSL Support
+
+✔ Caching
+
+✔ Compression
+
+---
+
+# Limitations of Nginx
+
+- Dynamic application logic is handled by backend applications, not by Nginx itself.
+- Configuration changes generally require configuration validation and reload.
+- Advanced features require understanding of Nginx configuration syntax.
+
+---
+
+# Nginx vs Apache (Overview)
+
+| Feature | Nginx | Apache |
+|----------|--------|---------|
+| Architecture | Event Driven | Process/Thread Based |
+| Memory Usage | Lower | Higher |
+| Static Content | Excellent | Very Good |
+| Reverse Proxy | Excellent | Supported |
+| High Concurrency | Excellent | Good |
+
+A detailed comparison will be covered later.
+
+---
+
+# Real Production Example
+
+Suppose an online shopping application receives
+
+```
+50,000
+
+Concurrent Users
+```
+
+Architecture
+
+```
+Users
+
+↓
+
+Nginx
+
+↓
+
+Spring Boot
+
+↓
+
+MySQL
+```
+
+Nginx efficiently distributes requests,
+
+allowing the backend application to focus on business logic.
+
+---
+
+# Common Beginner Mistakes
+
+### Mistake 1
+
+Thinking Nginx is only a web server.
+
+It is also a reverse proxy, load balancer, cache and API gateway.
+
+---
+
+### Mistake 2
+
+Confusing Nginx with an application server.
+
+Nginx forwards dynamic requests to application servers such as Java, Node.js or Python applications.
+
+---
+
+### Mistake 3
+
+Believing Nginx replaces databases.
+
+Nginx handles HTTP traffic,
+
+not database storage.
+
+---
+
+# Interview Questions
+
+### Q1. What is Nginx?
+
+Nginx is an open-source web server that also functions as a reverse proxy, load balancer, cache and API gateway.
+
+---
+
+### Q2. Who created Nginx?
+
+Igor Sysoev.
+
+---
+
+### Q3. Why was Nginx developed?
+
+To efficiently handle large numbers of concurrent client connections and overcome the C10K problem.
+
+---
+
+### Q4. What architecture does Nginx use?
+
+An event-driven, asynchronous architecture.
+
+---
+
+### Q5. Name four major uses of Nginx.
+
+- Web Server
+- Reverse Proxy
+- Load Balancer
+- API Gateway
+
+---
+
+# Key Takeaways
+
+- Nginx is one of the world's most widely used web servers.
+- It uses an event-driven architecture for high performance.
+- Nginx can serve static content, proxy requests, balance traffic and terminate SSL.
+- It is lightweight, scalable and widely used in production.
+- Mastering Nginx is an essential DevOps skill.
+
+---
+
+# Next Section
+
+## 5.3 Nginx Architecture
+
+In the next section, we will learn:
+
+- Master Process
+- Worker Processes
+- Event Loop
+- Request Processing
+- Connection Handling
+- Worker Connections
+- Performance Optimization
+- Real Production Architecture
+- Interview Questions
